@@ -102,12 +102,9 @@ class AsusAuraLedDevice(LEDController):
     PACKET_SIZE: int = 65
     DEFAULT_TIMEOUT: int = 1500
 
-    def set_color(self, colors: RGBColor | List[RGBColor]) -> None:
-        self._set_direct_single_color(colors)
-
     # TODO: Implement real thing
-    def set_static_color(self, colors: RGBColor) -> None:
-        self._set_direct_single_color(colors)
+    def set_static_color(self, color: RGBColor) -> None:
+        self._set_direct_single_color(color)
 
     def turn_off(self) -> None:
         self._send(fb.commit())

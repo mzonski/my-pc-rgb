@@ -1,14 +1,9 @@
 from abc import ABC, abstractmethod
-from typing import List, Optional
 
 from utils import RGBColor
 
 
 class LEDController(ABC):
-    @abstractmethod
-    def set_color(self, colors: RGBColor | List[RGBColor]) -> None:
-        pass
-
     @abstractmethod
     def set_static_color(self, color: RGBColor) -> None:
         pass

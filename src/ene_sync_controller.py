@@ -1,6 +1,6 @@
 import logging
 from concurrent.futures import ThreadPoolExecutor
-from typing import List, Optional, Tuple, Callable
+from typing import Callable, List, Tuple
 
 from ene_controller import ENEController
 from led_controller_interface import LEDController
@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 class ENESyncController(LEDController):
-    def __init__(self, devices: Optional[List[Tuple[int, int, str]]] = None) -> None:
+    def __init__(self, devices: List[Tuple[int, int, str]]) -> None:
         self.devices: List[ENEController] = [
             ENEController(bus, addr, device_name) for bus, addr, device_name in devices
         ]

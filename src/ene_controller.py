@@ -5,7 +5,7 @@ from typing import List, Optional
 from smbus3 import SMBus
 
 from led_controller_interface import LEDController
-from utils import RGBColor, DEFAULT_COLOR, DISABLED_COLOR
+from utils import DEFAULT_COLOR, DISABLED_COLOR, RGBColor
 
 logger = logging.getLogger(__name__)
 
@@ -84,7 +84,8 @@ class ENEController(LEDController):
 
         if self.device_name != device_name:
             raise RuntimeError(
-                f"Controller incorrectly initialized on bus {bus_number} at register {address}. Expected device name {device_name}, got {self.device_name}"
+                f"Controller incorrectly initialized on bus {bus_number} at register {address}."
+                + f"Expected device name {device_name}, got {self.device_name}"
             )
 
         self.config_table: List[int] = self._read_register_block(Registers.CONFIG_TABLE, 64)

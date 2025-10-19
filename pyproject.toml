@@ -8,6 +8,9 @@ disable = [
     "missing-class-docstring", 
     "missing-function-docstring",
     "too-few-public-methods",
+    "too-many-arguments",
+    "too-many-positional-arguments",
+    "fixme",
     "broad-exception-caught"
 ]
 

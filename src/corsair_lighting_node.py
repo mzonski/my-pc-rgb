@@ -8,7 +8,7 @@ from typing import List, Optional
 import hid
 
 from led_controller_interface import LEDController
-from utils import RGBColor, CommandData, normalize_command_data, format_hex, DISABLED_COLOR, DEFAULT_COLOR
+from utils import DEFAULT_COLOR, DISABLED_COLOR, CommandData, RGBColor, format_hex, normalize_command_data
 
 logger = logging.getLogger(__name__)
 
@@ -82,16 +82,6 @@ class CorsairLightingNodeController(LEDController):
         self.keepalive_running = False
         self.last_commit_time = time.time()
         self.lock = threading.Lock()
-
-    def set_color(self, color: RGBColor) -> None:
-        r, g, b = color
-
-        self._switch_to_software_mode()
-        self._write_led_color_values(0, self.LED_COUNT, RGBChannel.RED, [r] * self.LED_COUNT)
-        self._write_led_color_values(0, self.LED_COUNT, RGBChannel.GREEN, [g] * self.LED_COUNT)
-        self._write_led_color_values(0, self.LED_COUNT, RGBChannel.BLUE, [b] * self.LED_COUNT)
-        self._write_led_trigger()
-        logger.debug("Set direct color RGB(%d, %d, %d)", r, g, b)
 
     def set_static_color(self, color: RGBColor):
         self._apply_led_mode(LEDMode.FIXED, [color])
@@ -216,7 +206,7 @@ class CorsairLightingNodeController(LEDController):
                 *chain.from_iterable(colors),
             ]
         )
-        logger.info("RESPONSE WRITE_LED_GROUP_SET: %s", format_hex(response))
+        logger.debug("RESPONSE WRITE_LED_GROUP_SET: %s", format_hex(response))
 
     def _write_led_trigger(self) -> None:
         self._send_command([CommandId.WRITE_LED_TRIGGER, 0xFF])

@@ -89,7 +89,7 @@
                 '';
 
                 lint.exec = ''
-                  mypy src/
+                  mypy src/ --check-untyped-def
                   pylint src/**/*.py
                 '';
 

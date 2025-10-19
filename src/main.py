@@ -4,25 +4,24 @@ import signal
 import sys
 import time
 from concurrent.futures import ThreadPoolExecutor
-from typing import List, Callable
+from typing import Callable, List
 
 from aura_device import AsusAuraLedDevice
 from corsair_lighting_node import CorsairLightingNodeController
 from ene_sync_controller import ENESyncController
 from led_controller_interface import LEDController
-from utils import RGBColor, DEFAULT_COLOR
-
-logger = logging.getLogger(__name__)
-
+from utils import DEFAULT_COLOR, RGBColor
 from device_config import (
-    RAM_BUS_NUMBER,
-    RAM_DEVICE_NAME,
+    GPU_BUS_ADDRESS,
+    GPU_BUS_NUMBER,
+    GPU_DEVICE_NAME,
     RAM1_BUS_ADDRESS,
     RAM2_BUS_ADDRESS,
-    GPU_BUS_NUMBER,
-    GPU_BUS_ADDRESS,
-    GPU_DEVICE_NAME,
+    RAM_BUS_NUMBER,
+    RAM_DEVICE_NAME,
 )
+
+logger = logging.getLogger(__name__)
 
 
 class SyncedRGBController(LEDController):
