@@ -4,11 +4,10 @@ from typing import List, Optional
 
 from smbus3 import SMBus
 
+from led_controller_interface import LEDController
 from utils import RGBColor, DEFAULT_COLOR, DISABLED_COLOR
 
 logger = logging.getLogger(__name__)
-
-ENE_NUM_ZONES = 8
 
 
 class Config(IntEnum):
@@ -35,7 +34,49 @@ class LightMode(IntEnum):
     STATIC = 1
 
 
-class ENEController:
+class ENEController(LEDController):
+    def set_color(self, colors: RGBColor | List[RGBColor]) -> None:
+        if isinstance(colors, tuple):
+            r, g, b = colors
+            colors_list = [colors] * self.led_count
+            self._set_direct_mode(True, colors)
+            logger.debug("Set direct color RGB(%d, %d, %d) for %d LEDs", r, g, b, self.led_count)
+        else:
+            colors_list = colors
+            self._set_direct_mode(True, colors[0])
+            logger.debug("Set %d individual colors", len(colors))
+
+        self._write_colors(colors_list)
+
+    def set_static_color(self, color: RGBColor) -> None:
+        r, g, b = color
+        colors_list = [color] * self.led_count
+        self._set_direct_mode(False, color)
+        logger.debug("Set static color RGB(%d, %d, %d) for %d LEDs", r, g, b, self.led_count)
+
+        self._write_colors(colors_list)
+
+    def turn_on(self) -> None:
+        try:
+            self._set_direct_mode(False, DEFAULT_COLOR)
+            self._set_mode(LightMode.STATIC)
+            self.set_color(DEFAULT_COLOR)
+            self.apply()
+            logger.debug("GPU LED turned on")
+        except Exception as e:
+            logger.error("Error turning on GPU LED: %s", e)
+            raise
+
+    def turn_off(self) -> None:
+        try:
+            self._set_direct_mode(False, DISABLED_COLOR)
+            self._set_mode(LightMode.OFF)
+            self.apply()
+            logger.debug("GPU LED turned off")
+        except Exception as e:
+            logger.error("Error turning off GPU LED: %s", e)
+            raise
+
     def __init__(self, bus_number: int, address: int, device_name: str) -> None:
         self.bus: SMBus = SMBus(bus_number)
         self.address: int = address
@@ -46,15 +87,15 @@ class ENEController:
                 f"Controller incorrectly initialized on bus {bus_number} at register {address}. Expected device name {device_name}, got {self.device_name}"
             )
 
-        self.config_table: List[int] = self.read_register_block(Registers.CONFIG_TABLE, 64)
-        self.is_direct_mode: bool = False
-        self.light_mode = self.read_register(Registers.MODE)
+        self.config_table: List[int] = self._read_register_block(Registers.CONFIG_TABLE, 64)
+        self.is_direct_mode = False
+        self.light_mode = self._read_register(Registers.MODE)
         self.led_count: int = self.config_table[Config.LED_COUNT]
 
         logger.debug("ENE Controller initialized on bus %s at address 0x%02X", bus_number, address)
         logger.info("ENE Controller initialized with %d LEDs", self.led_count)
 
-    def read_register(self, register: int) -> int:
+    def _read_register(self, register: int) -> int:
         try:
             reg_swapped = ((register << 8) & 0xFF00) | ((register >> 8) & 0x00FF)
             self.bus.write_word_data(self.address, 0x00, reg_swapped)
@@ -65,16 +106,16 @@ class ENEController:
             logger.error("Error reading from register 0x%04X: %s", register, e)
             raise
 
-    def read_register_block(self, register: int, length: int) -> List[int]:
+    def _read_register_block(self, register: int, length: int) -> List[int]:
         try:
-            data = [self.read_register(register + i) for i in range(length)]
+            data = [self._read_register(register + i) for i in range(length)]
             logger.debug("Read %d bytes from register 0x%04X", len(data), register)
             return data
         except Exception as e:
             logger.error("Error reading block from register 0x%04X: %s", register, e)
             raise
 
-    def write_register(self, register: int, value: int) -> None:
+    def _write_register(self, register: int, value: int) -> None:
         try:
             reg_swapped = ((register << 8) & 0xFF00) | ((register >> 8) & 0x00FF)
             self.bus.write_word_data(self.address, 0x00, reg_swapped)
@@ -84,7 +125,7 @@ class ENEController:
             logger.error("Error writing to register 0x%04X: %s", register, e)
             raise
 
-    def write_register_block(self, register: int, data: List[int]) -> None:
+    def _write_register_block(self, register: int, data: List[int]) -> None:
         try:
             reg_swapped = ((register << 8) & 0xFF00) | ((register >> 8) & 0x00FF)
             self.bus.write_word_data(self.address, 0x00, reg_swapped)
@@ -102,49 +143,40 @@ class ENEController:
         register = Registers.COLORS_DIRECT_V2 if self.is_direct_mode else Registers.COLORS_EFFECT_V2
         for i in range(0, len(color_buf), 3):
             chunk = color_buf[i : i + 3]
-            self.write_register_block(register + i, chunk)
+            self._write_register_block(register + i, chunk)
 
         self.apply()
         if not self.is_direct_mode and self.light_mode == LightMode.STATIC:
             self.save()
 
-    def set_color(self, colors: RGBColor | List[RGBColor]) -> None:
-        if isinstance(colors, tuple):
-            r, g, b = colors
-            colors_list = [colors] * self.led_count
-            logger.debug("Set single color RGB(%d, %d, %d) for %d LEDs", r, g, b, self.led_count)
-        else:
-            colors_list = colors
-            logger.debug("Set %d individual colors", len(colors))
-
-        self._write_colors(colors_list)
-
-    def set_mode(self, mode: LightMode) -> None:
+    def _set_mode(self, mode: LightMode) -> None:
         if self.is_direct_mode:
             logger.warning("Direct mode is enabled, disable it to set other mode")
-        self.write_register(Registers.MODE, mode)
+        self._write_register(Registers.MODE, mode)
         self.light_mode = mode
         logger.debug("Set mode to %s", mode)
 
-    def set_direct_mode(self, enabled: bool, color: Optional[RGBColor] = None) -> None:
-        self.write_register(Registers.DIRECT, 1 if enabled else 0)
+    def _set_direct_mode(self, enabled: bool, color: Optional[RGBColor] = None) -> None:
+        if enabled == self.is_direct_mode:
+            return
+        self._write_register(Registers.DIRECT, 1 if enabled else 0)
         self.is_direct_mode = enabled
         self.set_color(DEFAULT_COLOR if color is None else color)
         self.apply()
 
     def _get_device_name(self) -> str:
         try:
-            name_bytes = self.read_register_block(Registers.DEVICE_NAME, 16)
+            name_bytes = self._read_register_block(Registers.DEVICE_NAME, 16)
             return ("".join(chr(byte) for byte in name_bytes)).strip("\x00")
         except Exception as e:
             logger.error("Error reading device name: %s", e)
             return "Unknown"
 
     def apply(self):
-        self.write_register(Registers.APPLY, ApplyMode.APPLY)
+        self._write_register(Registers.APPLY, ApplyMode.APPLY)
 
     def save(self):
-        self.write_register(Registers.APPLY, ApplyMode.SAVE)
+        self._write_register(Registers.APPLY, ApplyMode.SAVE)
 
     def close(self) -> None:
         try:
@@ -152,24 +184,3 @@ class ENEController:
             logger.debug("ENE Controller closed")
         except Exception as e:
             logger.error("Error closing ENE Controller: %s", e)
-
-    def turn_on(self) -> None:
-        try:
-            self.set_direct_mode(False, DEFAULT_COLOR)
-            self.set_mode(LightMode.STATIC)
-            self.set_color(DEFAULT_COLOR)
-            self.apply()
-            logger.debug("GPU LED turned on")
-        except Exception as e:
-            logger.error("Error turning on GPU LED: %s", e)
-            raise
-
-    def turn_off(self) -> None:
-        try:
-            self.set_direct_mode(False, DISABLED_COLOR)
-            self.set_mode(LightMode.OFF)
-            self.apply()
-            logger.debug("GPU LED turned off")
-        except Exception as e:
-            logger.error("Error turning off GPU LED: %s", e)
-            raise

@@ -2,10 +2,14 @@ import atexit
 import logging
 import signal
 import sys
+import time
+from concurrent.futures import ThreadPoolExecutor
+from typing import List, Callable
 
 from aura_device import AsusAuraLedDevice
 from corsair_lighting_node import CorsairLightingNodeController
 from ene_sync_controller import ENESyncController
+from led_controller_interface import LEDController
 from utils import RGBColor, DEFAULT_COLOR
 
 logger = logging.getLogger(__name__)
@@ -21,57 +25,46 @@ from device_config import (
 )
 
 
-class SyncedRGBController:
+class SyncedRGBController(LEDController):
     def __init__(self):
-        self.ene_controller = ENESyncController(
-            [
-                (RAM_BUS_NUMBER, RAM1_BUS_ADDRESS, RAM_DEVICE_NAME),
-                (RAM_BUS_NUMBER, RAM2_BUS_ADDRESS, RAM_DEVICE_NAME),
-                (GPU_BUS_NUMBER, GPU_BUS_ADDRESS, GPU_DEVICE_NAME),
-            ]
-        )
-        self.corsair_controller = CorsairLightingNodeController()
-        self.aura_device = AsusAuraLedDevice()
+        self.controllers: List[LEDController] = [
+            ENESyncController(
+                [
+                    (RAM_BUS_NUMBER, RAM1_BUS_ADDRESS, RAM_DEVICE_NAME),
+                    (RAM_BUS_NUMBER, RAM2_BUS_ADDRESS, RAM_DEVICE_NAME),
+                    (GPU_BUS_NUMBER, GPU_BUS_ADDRESS, GPU_DEVICE_NAME),
+                ]
+            ),
+            CorsairLightingNodeController(),
+            AsusAuraLedDevice(),
+        ]
         self.running = False
         logger.info("Synced RGB Controller initialized")
 
-    def connect(self) -> None:
-        self.aura_device.connect()
-        self.corsair_controller.connect()
-        logger.info("All devices connected")
+    def _execute(self, func: Callable, *args, **kwargs) -> None:
+        with ThreadPoolExecutor() as executor:
+            list(executor.map(lambda device: func(device, *args, **kwargs), self.controllers))
 
-    def disconnect(self) -> None:
-        self.aura_device.disconnect()
-        self.corsair_controller.disconnect()
-        self.ene_controller.close()
-        logger.info("All devices disconnected")
+    def set_static_color(self, color: RGBColor) -> None:
+        self._execute(lambda d, c: d.set_static_color(c), color)
 
-    def set_color(self, color: RGBColor) -> None:
-        [r, g, b] = color
-        logger.info("Setting synced color: RGB(%s, %s, %s)", r, g, b)
-        self.ene_controller.set_color(color)
-        self.corsair_controller.set_color(color)
-        self.aura_device.set_direct_single_color(color)
+    def set_color(self, colors: RGBColor | List[RGBColor]) -> None:
+        self._execute(lambda d, c: d.set_color(c), colors)
 
     def turn_on(self) -> None:
-        logger.info("Turning on all RGB")
-        self.ene_controller.turn_on()
-        self.corsair_controller.turn_on()
-        self.aura_device.turn_on()
+        self._execute(lambda d: d.turn_on())
 
     def turn_off(self) -> None:
-        logger.info("Turning off all RGB")
-        self.aura_device.turn_off()
-        self.corsair_controller.turn_off()
-        self.ene_controller.turn_off()
+        self._execute(lambda d: d.turn_off())
 
     def run(self) -> None:
         self.running = True
         try:
-            self.connect()
             self.turn_on()
-            self.set_color(DEFAULT_COLOR)
             logger.info("RGB Controller service running")
+            time.sleep(1)
+
+            self.set_static_color(DEFAULT_COLOR)
 
             signal.pause()
 
@@ -83,7 +76,6 @@ class SyncedRGBController:
         logger.info("Stopping RGB Controller service")
         self.running = False
         self.turn_off()
-        self.disconnect()
 
 
 def main():
@@ -116,5 +108,6 @@ def main():
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(name)s - %(message)s")
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s: %(name)s - %(message)s")
+    # logging.basicConfig(level=logging.INFO, format="%(levelname)s - %(message)s")
     main()

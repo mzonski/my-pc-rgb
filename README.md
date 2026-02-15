@@ -21,12 +21,13 @@ Currently integrated:
 ## Features
 
 - **Toggle Control** - Turn RGB devices on/off
-- **Direct Color Mode** - Set custom colors for each device
+- **Set device static color** - Set static color for all devices in sync
+- **Set direct color** - Partially implemented
 - **Unified Interface** - Control all components from one application
 
 ## Roadmap
 
-1. ✅ ASUS cooler support
+1. ✅ ASUS Gen 2 RGB support
 2. ✅ ENE DDR5 integration
 3. ✅ Corsair Lighting Node Core integration
 4. ✅ GPU support
@@ -36,6 +37,12 @@ Currently integrated:
 ## Future Plans
 
 Once all personal hardware is fully supported, the goal is to contribute this functionality to the OpenRGB project for broader community benefit.
+
+## Acknowledgements
+
+- [OpenRGB](https://gitlab.com/CalcProgrammer1/OpenRGB)
+- [CorsairLightingProtocol](https://github.com/Legion2/CorsairLightingProtocol/)
+- [Aura Addressable Header Controller](https://gitlab.com/cneil02/aura-addressable-header-controller)
 
 ---
 

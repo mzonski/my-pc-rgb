@@ -7,7 +7,7 @@ from typing import List, Optional
 
 import hid
 
-from led_controller_interface import LEDControllerInterface
+from led_controller_interface import LEDController
 from utils import RGBColor, CommandData, normalize_command_data, format_hex, DISABLED_COLOR, DEFAULT_COLOR
 
 logger = logging.getLogger(__name__)
@@ -66,7 +66,7 @@ class LEDDirection(IntEnum):
     FORWARD = 0x00
 
 
-class CorsairLightingNodeController(LEDControllerInterface):
+class CorsairLightingNodeController(LEDController):
     VENDOR_ID = 0x1B1C
     PRODUCT_ID = 0x0C1A
     WRITE_PACKET_SIZE = 65

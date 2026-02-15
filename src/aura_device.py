@@ -7,6 +7,7 @@ from usb.core import find as find_device
 from usb.util import dispose_resources
 
 from aura_frame_builder import AuraFrameBuilder, AuraMode, RGBColor
+from led_controller_interface import LEDController
 from utils import CommandData, format_hex, normalize_command_data
 
 fb = AuraFrameBuilder()
@@ -95,31 +96,43 @@ class USBDeviceConnection:
         return self.device
 
 
-class AsusAuraLedDevice:
+class AsusAuraLedDevice(LEDController):
     VENDOR_ID: int = 0x0B05
     PRODUCT_ID: int = 0x19AF
     PACKET_SIZE: int = 65
     DEFAULT_TIMEOUT: int = 1500
 
+    def set_color(self, colors: RGBColor | List[RGBColor]) -> None:
+        self._set_direct_single_color(colors)
+
+    # TODO: Implement real thing
+    def set_static_color(self, colors: RGBColor) -> None:
+        self._set_direct_single_color(colors)
+
+    def turn_off(self) -> None:
+        self._send(fb.commit())
+        self._send(fb.power_state(0, False))
+        self._send(fb.power_state(1, False))
+        self._send(fb.commit())
+        self._disconnect()
+
+    def turn_on(self) -> None:
+        if not self._is_connected():
+            self._connect()
+        self._send(fb.power_state(0, True))
+        self._send(fb.power_state(1, True))
+
     def __init__(self, throttle: bool = False) -> None:
         self._connection: USBDeviceConnection = USBDeviceConnection(self.VENDOR_ID, self.PRODUCT_ID)
         self._throttle: bool = throttle
 
-    def __enter__(self) -> "AsusAuraLedDevice":
-        self.connect()
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
-        if self.is_connected():
-            self.disconnect()
-
-    def connect(self) -> None:
+    def _connect(self) -> None:
         self._connection.open()
 
-    def disconnect(self) -> None:
+    def _disconnect(self) -> None:
         self._connection.close()
 
-    def send(self, command_data: CommandData, command_id: Optional[int] = None) -> int:
+    def _send(self, command_data: CommandData, command_id: Optional[int] = None) -> int:
         if not self._connection.is_open():
             raise RuntimeError("Device not opened")
         try:
@@ -148,40 +161,31 @@ class AsusAuraLedDevice:
             logger.error("Error sending command: %s", e)
             raise
 
-    def is_connected(self) -> bool:
+    def _is_connected(self) -> bool:
         return self._connection.is_open()
 
-    def toggle_throttle(self):
+    def _toggle_throttle(self):
         self._throttle = not self._throttle
 
-    def turn_off(self) -> None:
-        self.send(fb.commit())
-        self.send(fb.power_state(0, False))
-        self.send(fb.power_state(1, False))
-
-    def turn_on(self) -> None:
-        self.send(fb.power_state(0, True))
-        self.send(fb.power_state(1, True))
-
-    def set_direct_single_color(self, color: RGBColor):
-        self.send(fb.commit())
+    def _set_direct_single_color(self, color: RGBColor):
+        self._send(fb.commit())
         self.turn_on()
 
-        self.send(fb.effect_mode(0x01, AuraMode.DIRECT, False))
-        self.send(fb.effect_mode(0x10, AuraMode.DIRECT, False))
-        self.send(fb.effect_mode(0x11, AuraMode.DIRECT, False))
-        self.send(fb.effect_mode(0x12, AuraMode.DIRECT, False))
+        self._send(fb.effect_mode(0x01, AuraMode.DIRECT, False))
+        self._send(fb.effect_mode(0x10, AuraMode.DIRECT, False))
+        self._send(fb.effect_mode(0x11, AuraMode.DIRECT, False))
+        self._send(fb.effect_mode(0x12, AuraMode.DIRECT, False))
 
-        self.send(fb.direct_mode_single_color(False, 16, color))
-        self.send(fb.direct_mode_single_color(True, 0x28, color, 8))
-        self.send(fb.direct_mode_single_color(True, 0x48, color, 8))
-        self.send(fb.direct_mode_single_color(True, 0x68, color, 8))
+        self._send(fb.direct_mode_single_color(False, 16, color))
+        self._send(fb.direct_mode_single_color(True, 0x28, color, 8))
+        self._send(fb.direct_mode_single_color(True, 0x48, color, 8))
+        self._send(fb.direct_mode_single_color(True, 0x68, color, 8))
 
-    def execute_test_sequence(self) -> None:
+    def _execute_test_sequence(self) -> None:
         try:
             self.turn_off()
             time.sleep(1)
-            self.set_direct_single_color((15, 0, 0))
+            self._set_direct_single_color((15, 0, 0))
         except Exception as e:
             logger.error("Error in test sequence: %s", e)
             raise
