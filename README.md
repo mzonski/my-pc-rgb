@@ -12,11 +12,8 @@ This project addresses the limitations of OpenRGB with certain hardware:
 
 Currently integrated:
 - ASUS ROG Ryujin III EXTREME ARGB
-- ENE DDR5
+- ENE Controller (RAM + GPU)
 - Corsair Lighting Node Core
-
-**Planned:**
-- ASUS GeForce RTX 5090 ROG Astral OC
 
 ## Features
 
