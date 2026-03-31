@@ -7,7 +7,8 @@ from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, List
 
 from aura_device import AsusAuraLedDevice
-from corsair_lighting_node import CorsairLightingNodeController
+
+# from corsair_lighting_node import CorsairLightingNodeController
 from ene_sync_controller import ENESyncController
 from led_controller_interface import LEDController
 from utils import DEFAULT_COLOR, RGBColor
@@ -34,7 +35,7 @@ class SyncedRGBController(LEDController):
                     (GPU_BUS_NUMBER, GPU_BUS_ADDRESS, GPU_DEVICE_NAME),
                 ]
             ),
-            CorsairLightingNodeController(),
+            # CorsairLightingNodeController(),
             AsusAuraLedDevice(),
         ]
         self.running = False
