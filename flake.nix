@@ -81,7 +81,7 @@
                 requireRoot = ''[ "$EUID" -ne 0 ] && echo "Error: This script must be run as root" >&2 && exit 1'';
               in
               {
-                run-ide.exec = "pycharm-professional . > /dev/null 2>&1 &";
+                run-ide.exec = "pycharm . > /dev/null 2>&1 &";
 
                 format.exec = ''
                   isort src/
