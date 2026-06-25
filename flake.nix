@@ -47,6 +47,11 @@
           python = pkgs.python313;
         in
         {
+          _module.args.pkgs = import inputs.nixpkgs {
+            inherit system;
+            config.allowUnfree = true;
+          };
+
           devenv.shells.default = {
             name = "my-pc-rgb";
 
@@ -58,6 +63,7 @@
                 tcpdump
                 wireshark
                 tshark
+                jetbrains.pycharm
               ]);
 
             languages.python = {
