@@ -66,7 +66,7 @@ class SyncedRGBController(LEDController):
 
             self.set_static_color(DEFAULT_COLOR)
 
-            signal.pause()
+            # signal.pause()
 
         except Exception as e:
             logger.error("Error in main loop: %s", e)
@@ -93,7 +93,7 @@ def main():
 
         if not closed:
             closed = True
-            controller.stop()
+            # controller.stop()
 
     atexit.register(_cleanup)
     signal.signal(signal.SIGINT, signal_handler)
